@@ -271,7 +271,7 @@ class ICM42688 {
 	///\brief I2C Communication
 	uint8_t                   _address  = 0;
 	TwoWire*                  _i2c      = {};
-	static constexpr uint32_t I2C_CLK   = 400'000;  // 400 kHz
+	static constexpr uint32_t I2C_CLK   = 400000;  // 400 kHz
 	size_t                    _numBytes = 0;        // number of bytes received from I2C
 
 	///\brief SPI Communication
@@ -281,8 +281,8 @@ class ICM42688 {
 	uint8_t                   _csPin        = 0;
 	bool                      _useSPI       = false;
 	bool                      _useSPIHS     = false;
-	static constexpr uint32_t SPI_LS_CLOCK  = 1'000'000;  // 1 MHz
-	uint32_t                  _spi_hs_clock = 8'000'000;  // 8 MHz
+	static constexpr uint32_t SPI_LS_CLOCK  = 1000000;  // 1 MHz
+	uint32_t                  _spi_hs_clock = 8000000;  // 8 MHz
 
 	// buffer for reading from sensor
 	// NOTE: FIFO frames can be 16 bytes (header + accel + gyro + temp + timestamp).

@@ -807,14 +807,11 @@ int ICM42688::computeOffsets() {
 	for (size_t ii = 0; ii < 3; ii++) {
 		_AccOffset[ii] =
 		  (int16_t)(-(_rawAccBias[ii]) * (FullScale_Acc / 32768.0f * 2048));  //*2048));  // 0.5 mg resolution
-		if (_rawAccBias[ii] * FullScale_Acc > 26'000) {
-			_AccOffset[ii] = (int16_t)(-(_rawAccBias[ii] - 32'768 / FullScale_Acc) * (FullScale_Acc / 32768.0f * 2048));
-		}  //26000 ~80% of 32768
-		if (_rawAccBias[ii] * FullScale_Acc < -26'000) {
-			_AccOffset[ii] = (int16_t)(-(_rawAccBias[ii] + 32'768 / FullScale_Acc) * (FullScale_Acc / 32768.0f * 2048));
+		if (_rawAccBias[ii] * FullScale_Acc > 26000) {
+			_AccOffset[ii] = (int16_t)(-(_rawAccBias[ii] - 32768 / FullScale_Acc) * (FullScale_Acc / 32768.0f * 2048));
 		}
-		_GyrOffset[ii] = (int16_t)((-_rawGyrBias[ii]) * (FullScale_Gyr / 32768.0f * 32));  //1/32 dps resolution
-	}
+		if (_rawAccBias[ii] * FullScale_Acc < -26000) {
+			_AccOffset[ii] = (int16_t)(-(_rawAccBias[ii] + 32768 / FullScale_Acc) * (FullScale_Acc / 32768.0f * 2048));
 
 	// Serial.println("The new raw Bias are:");
 	// for(size_t ii = 0; ii< 3; ii++){
@@ -1042,7 +1039,7 @@ int ICM42688::setGyroNotchFilter(float gyroNFfreq_x, float gyroNFfreq_y, float g
 	//uint8_t nf_coswz_sel = 0;
 	uint8_t     gyro_nf_coswz_low[3] = {0};
 	uint8_t     buff                 = 0;
-	float       Fdrv                 = 19'200 / (clkdiv * 10.0f);          // in kHz  (19.2MHz = 19200 kHz)
+	float       Fdrv                 = 19200 / (clkdiv * 10.0f);          // in kHz  (19.2MHz = 19200 kHz)
 	const float fdesired[3] = {gyroNFfreq_x, gyroNFfreq_y, gyroNFfreq_z};  // in kHz - fesdeired between 1kz and 3 kHz
 	// float coswz = 0;
 	for (size_t ii = 0; ii < 3; ii++) {

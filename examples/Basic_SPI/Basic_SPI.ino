@@ -5,7 +5,7 @@ ICM42688 IMU(SPI, 10);
 
 void setup() {
 	// serial to display data
-	Serial.begin(115'200);
+	Serial.begin(115200);
 	while (!Serial) {}
 
 	// start communication with IMU

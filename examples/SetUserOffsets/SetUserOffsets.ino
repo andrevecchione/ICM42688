@@ -8,7 +8,7 @@ volatile bool dataReady = false;
 void setImuFlag();
 
 void setup() {
-	Serial.begin(115'200);
+	Serial.begin(115200);
 	while (!Serial) {}
 	Serial.println("program starts...");
 
