@@ -11,7 +11,7 @@ size_t fifoSize;
 
 void setup() {
 	// serial to display data
-	Serial.begin(115'200);
+	Serial.begin(115200);
 	while (!Serial) {}
 
 	// start communication with IMU
@@ -23,10 +23,9 @@ void setup() {
 		Serial.println(status);
 		while (1) {}
 	}
-	// setting DLPF bandwidth to 20 Hz
-	IMU.setDlpfBandwidth(ICM42688::DLPF_BANDWIDTH_21HZ);
-	// setting SRD to 19 for a 50 Hz update rate
-	IMU.setSrd(19);
+	// set accelerometer ODR to ~50 Hz and disable inner filters
+	IMU.setAccelODR(ICM42688::odr50);
+	IMU.setFilters(false, false);
 	// enabling the FIFO to record just the accelerometers
 	IMU.enableFifo(true, false, false);
 	// gather 50 samples of data

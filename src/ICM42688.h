@@ -84,7 +84,7 @@ class ICM42688 {
      * @param      bus    SPI bus
      * @param[in]  csPin  Chip Select pin
      */
-	ICM42688(SPIClass& bus, uint8_t csPin, uint32_t spi_hs_clock = 8'000'000);
+	ICM42688(SPIClass& bus, uint8_t csPin, uint32_t spi_hs_clock = 8000000);
 
 	/**
      * @brief      Initialize the device.
@@ -285,7 +285,9 @@ class ICM42688 {
 	uint32_t                  _spi_hs_clock = 8'000'000;  // 8 MHz
 
 	// buffer for reading from sensor
-	uint8_t _buffer[15] = {};
+	// NOTE: FIFO frames can be 16 bytes (header + accel + gyro + temp + timestamp).
+	// Keep some headroom for future extensions.
+	uint8_t _buffer[32] = {};
 
 	// data buffer
 	float _t      = 0.0f;
@@ -378,6 +380,11 @@ class ICM42688_FIFO: public ICM42688 {
 	int  enableFifo(bool accel, bool gyro, bool temp);
 	int  streamToFifo();
 	int  readFifo();
+	// Streaming helpers (raw FIFO access)
+	size_t fifoFrameSize() const { return _fifoFrameSize; }
+	size_t fifoByteCount() const { return _fifoSize; }
+	int    updateFifoByteCount();
+	int    readFifoFrame(uint8_t* frame, size_t frameSize);
 	void getFifoAccelX_mss(size_t* size, float* data);
 	void getFifoAccelY_mss(size_t* size, float* data);
 	void getFifoAccelZ_mss(size_t* size, float* data);

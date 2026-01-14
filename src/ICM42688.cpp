@@ -40,7 +40,13 @@ int ICM42688::begin() {
 		_spi->begin();
 	} else {  // using I2C for communication
 		// starting the I2C bus
-		_i2c->begin(_sda_pin, _scl_pin);
+		// NOTE: Most Arduino cores (e.g., AVR) only support Wire.begin() with no pins.
+		// ESP32/ESP8266 support Wire.begin(sda, scl).
+		#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32) || defined(ARDUINO_ARCH_ESP8266) || defined(ESP8266)
+			_i2c->begin(_sda_pin, _scl_pin);
+		#else
+			_i2c->begin();
+		#endif
 		// setting the I2C clock
 		_i2c->setClock(I2C_CLK);
 	}
@@ -347,6 +353,27 @@ int ICM42688_FIFO::enableFifo(bool accel, bool gyro, bool temp) {
 int ICM42688_FIFO::streamToFifo() {
 	if (writeRegister(ICM42688reg::UB0_REG_FIFO_CONFIG, 1 << 6) < 0) {
 		return -2;
+	}
+	return 1;
+}
+
+int ICM42688_FIFO::updateFifoByteCount() {
+	_useSPIHS = true;
+	// get the fifo size
+	if (readRegisters(UB0_REG_FIFO_COUNTH, 2, _buffer) < 0) {
+		return -1;
+	}
+	_fifoSize = (((uint16_t)(_buffer[0] & 0x0F)) << 8) + ((uint16_t)_buffer[1]);
+	return 1;
+}
+
+int ICM42688_FIFO::readFifoFrame(uint8_t* frame, size_t frameSize) {
+	_useSPIHS = true;
+	if (frame == nullptr || frameSize == 0) {
+		return -2;
+	}
+	if (readRegisters(UB0_REG_FIFO_DATA, frameSize, frame) < 0) {
+		return -1;
 	}
 	return 1;
 }
