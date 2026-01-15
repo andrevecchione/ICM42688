@@ -5,6 +5,29 @@
 #include "SPI.h"   // SPI library
 #include "Wire.h"  // I2C library
 
+// FIFO helper class sample buffering
+//
+// The original library buffers many FIFO samples as floats inside the
+// ICM42688_FIFO object. That is convenient on MCUs with lots of RAM, but it
+// exceeds the ATmega328p's 2 KB SRAM.
+//
+// You can override these at build time (e.g., via compiler defines) if needed.
+#if defined(ARDUINO_ARCH_AVR)
+	#ifndef ICM42688_FIFO_ACCEL_GYRO_SAMPLES
+		#define ICM42688_FIFO_ACCEL_GYRO_SAMPLES 4
+	#endif
+	#ifndef ICM42688_FIFO_TEMP_SAMPLES
+		#define ICM42688_FIFO_TEMP_SAMPLES 4
+	#endif
+#else
+	#ifndef ICM42688_FIFO_ACCEL_GYRO_SAMPLES
+		#define ICM42688_FIFO_ACCEL_GYRO_SAMPLES 85
+	#endif
+	#ifndef ICM42688_FIFO_TEMP_SAMPLES
+		#define ICM42688_FIFO_TEMP_SAMPLES 256
+	#endif
+#endif
+
 class ICM42688 {
  public:
 	enum GyroFS : uint8_t {
@@ -402,15 +425,15 @@ class ICM42688_FIFO: public ICM42688 {
 	bool   _enFifoHeader    = false;
 	size_t _fifoSize        = 0;
 	size_t _fifoFrameSize   = 0;
-	float  _axFifo[85]      = {};
-	float  _ayFifo[85]      = {};
-	float  _azFifo[85]      = {};
+	float  _axFifo[ICM42688_FIFO_ACCEL_GYRO_SAMPLES] = {};
+	float  _ayFifo[ICM42688_FIFO_ACCEL_GYRO_SAMPLES] = {};
+	float  _azFifo[ICM42688_FIFO_ACCEL_GYRO_SAMPLES] = {};
 	size_t _aSize           = 0;
-	float  _gxFifo[85]      = {};
-	float  _gyFifo[85]      = {};
-	float  _gzFifo[85]      = {};
+	float  _gxFifo[ICM42688_FIFO_ACCEL_GYRO_SAMPLES] = {};
+	float  _gyFifo[ICM42688_FIFO_ACCEL_GYRO_SAMPLES] = {};
+	float  _gzFifo[ICM42688_FIFO_ACCEL_GYRO_SAMPLES] = {};
 	size_t _gSize           = 0;
-	float  _tFifo[256]      = {};
+	float  _tFifo[ICM42688_FIFO_TEMP_SAMPLES] = {};
 	size_t _tSize           = 0;
 };
 

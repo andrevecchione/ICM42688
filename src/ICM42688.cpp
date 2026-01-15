@@ -392,11 +392,29 @@ int ICM42688_FIFO::readFifo() {
 	size_t accIndex  = 1;
 	size_t gyroIndex = accIndex + _enFifoAccel * 6;
 	size_t tempIndex = gyroIndex + _enFifoGyro * 6;
+	// Drain the FIFO completely, but only store as many frames as we have space
+	// for in the internal float buffers.
+	const size_t framesInFifo = (_fifoFrameSize == 0) ? 0 : (_fifoSize / _fifoFrameSize);
+	size_t storeFrames        = framesInFifo;
+	if (_enFifoAccel || _enFifoGyro) {
+		storeFrames = min(storeFrames, (size_t)ICM42688_FIFO_ACCEL_GYRO_SAMPLES);
+	}
+	if (_enFifoTemp) {
+		storeFrames = min(storeFrames, (size_t)ICM42688_FIFO_TEMP_SAMPLES);
+	}
+
+	_aSize = 0;
+	_gSize = 0;
+	_tSize = 0;
+
 	// read and parse the buffer
-	for (size_t i = 0; i < _fifoSize / _fifoFrameSize; i++) {
+	for (size_t i = 0; i < framesInFifo; i++) {
 		// grab the data from the ICM42688
 		if (readRegisters(UB0_REG_FIFO_DATA, _fifoFrameSize, _buffer) < 0) {
 			return -1;
+		}
+		if (i >= storeFrames) {
+			continue;
 		}
 		if (_enFifoAccel) {
 			// combine into 16 bit values
@@ -408,13 +426,13 @@ int ICM42688_FIFO::readFifo() {
 			_axFifo[i] = ((rawMeas[0] * _accelScale) - _accB[0]) * _accS[0];
 			_ayFifo[i] = ((rawMeas[1] * _accelScale) - _accB[1]) * _accS[1];
 			_azFifo[i] = ((rawMeas[2] * _accelScale) - _accB[2]) * _accS[2];
-			_aSize     = numFrames;
+			_aSize     = storeFrames;
 		}
 		if (_enFifoTemp) {
 			int8_t rawMeas = _buffer[tempIndex + 0];
 			// transform and convert to float values
 			_tFifo[i] = (static_cast<float>(rawMeas) / TEMP_DATA_REG_SCALE) + TEMP_OFFSET;
-			_tSize    = numFrames;
+			_tSize    = storeFrames;
 		}
 		if (_enFifoGyro) {
 			// combine into 16 bit values
@@ -426,7 +444,7 @@ int ICM42688_FIFO::readFifo() {
 			_gxFifo[i] = (rawMeas[0] * _gyroScale) - _gyrB[0];
 			_gyFifo[i] = (rawMeas[1] * _gyroScale) - _gyrB[1];
 			_gzFifo[i] = (rawMeas[2] * _gyroScale) - _gyrB[2];
-			_gSize     = numFrames;
+			_gSize     = storeFrames;
 		}
 	}
 	return 1;
@@ -812,6 +830,8 @@ int ICM42688::computeOffsets() {
 		}
 		if (_rawAccBias[ii] * FullScale_Acc < -26000) {
 			_AccOffset[ii] = (int16_t)(-(_rawAccBias[ii] + 32768 / FullScale_Acc) * (FullScale_Acc / 32768.0f * 2048));
+		}
+	}
 
 	// Serial.println("The new raw Bias are:");
 	// for(size_t ii = 0; ii< 3; ii++){

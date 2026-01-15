@@ -8,6 +8,9 @@
 
 AltSoftSerial rs485;
 
+static constexpr uint32_t USB_BAUD = 115200;
+static constexpr uint32_t RS485_BAUD = 57600;
+
 #if !BINARY_BRIDGE_MODE
 // CSV IMU frames are much longer than "HELLO".
 // Keep this comfortably above your longest expected line.
@@ -34,8 +37,8 @@ void setup() {
   rs485Receive();
 
   // USB serial to notebook
-  Serial.begin(115200);
-  rs485.begin(115200);
+  Serial.begin(USB_BAUD);
+  rs485.begin(RS485_BAUD);
 
   Serial.println("RS485 MASTER READY");
 }
@@ -43,10 +46,18 @@ void setup() {
 void loop() {
 #if BINARY_BRIDGE_MODE
   // Forward RS485 bytes directly to USB serial.
+  // Batch forwarding reduces per-byte overhead and helps the receiver keep up
+  // at higher baud rates.
+  uint8_t buf[256];
   while (rs485.available()) {
-    const int b = rs485.read();
-    if (b >= 0) {
-      Serial.write((uint8_t)b);
+    size_t n = 0;
+    while (rs485.available() && n < sizeof(buf)) {
+      const int b = rs485.read();
+      if (b < 0) break;
+      buf[n++] = (uint8_t)b;
+    }
+    if (n) {
+      Serial.write(buf, n);
     }
   }
 #else
