@@ -150,6 +150,11 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help="In binary mode, include raw accel/gyro counts columns in the CSV",
     )
     parser.add_argument(
+        "--binary-include-fsync",
+        action="store_true",
+        help="In binary batch mode, include per-packet FSYNC timestamp columns (fsync_ts, fsync_ts_unwrapped)",
+    )
+    parser.add_argument(
         "--binary-include-imu-ts",
         action="store_true",
         help="In binary mode, include imu_ts and imu_ts_unwrapped columns in the CSV",
@@ -270,6 +275,8 @@ def main(argv: list[str]) -> int:
         bin_header = ["time_s"]
         if args.binary_include_imu_ts:
             bin_header += ["imu_ts", "imu_ts_unwrapped"]
+        if args.binary_include_fsync:
+            bin_header += ["fsync_ts", "fsync_ts_unwrapped"]
         if args.binary_include_raw:
             bin_header += [
                 "ax_raw",
@@ -311,6 +318,11 @@ def main(argv: list[str]) -> int:
         min_dt_ticks: Optional[int] = None
         imu_tick_us: Optional[float] = args.imu_ts_tick_us
         tick_info_printed = False
+        # FSYNC packet timestamp unwrapping
+        last_fsync_ts: Optional[int] = None
+        fsync_wrap_base = 0
+        t0_fsync_unwrapped: Optional[int] = None
+        last_fsync_unwrapped: Optional[int] = None
 
         try:
             while True:
@@ -329,8 +341,8 @@ def main(argv: list[str]) -> int:
 
                     # If we have a batch marker, decode batch packets.
                     if len(buf) >= idx + 3 and buf[idx : idx + 3] == SYNC_BATCH:
-                        # Need at least: sync3 + count + crc16
-                        if len(buf) < idx + 3 + 1 + 2:
+                        # Need at least: sync3 + count + fsync(2) + crc16
+                        if len(buf) < idx + 3 + 1 + 2 + 2:
                             if idx > 0:
                                 del buf[:idx]
                             break
@@ -341,9 +353,9 @@ def main(argv: list[str]) -> int:
                             del buf[: idx + 1]
                             continue
 
-                        # Body is: count + (count * sample)
+                        # Body is: count + fsync_ts(u16 LE) + (count * sample)
                         # Each sample is: imu_ts(u16 LE) + 6 axes(int16 LE) => 14 bytes
-                        body_len = 1 + (count * 14)
+                        body_len = 1 + 2 + (count * 14)
                         pkt_len = 3 + body_len + 2
                         if len(buf) < idx + pkt_len:
                             if idx > 0:
@@ -364,7 +376,20 @@ def main(argv: list[str]) -> int:
                         # consume packet
                         del buf[: idx + pkt_len]
 
-                        samples = pkt[4 : 4 + (count * 14)]
+                        # Extract FSYNC timestamp (little-endian) placed after count
+                        fsync_lo = pkt[4]
+                        fsync_hi = pkt[5]
+                        fsync_ts = fsync_lo | (fsync_hi << 8)
+
+                        samples = pkt[6 : 6 + (count * 14)]
+                        # unwrap fsync timestamp
+                        if last_fsync_ts is not None and fsync_ts < last_fsync_ts:
+                            fsync_wrap_base += 0x10000
+                        last_fsync_ts = fsync_ts
+                        fsync_ts_unwrapped = fsync_wrap_base + fsync_ts
+                        if t0_fsync_unwrapped is None:
+                            t0_fsync_unwrapped = fsync_ts_unwrapped
+                        last_fsync_unwrapped = fsync_ts_unwrapped
                         for i in range(count):
                             off = i * 14
                             imu_ts, ax, ay, az, gx, gy, gz = struct.unpack_from("<Hhhhhhh", samples, off)
@@ -404,6 +429,8 @@ def main(argv: list[str]) -> int:
                             row: list[object] = [_fmt_float(time_s, 6)]
                             if args.binary_include_imu_ts:
                                 row += [imu_ts, imu_ts_unwrapped]
+                            if args.binary_include_fsync:
+                                row += [fsync_ts, fsync_ts_unwrapped]
                             if args.binary_include_raw:
                                 row += [ax, ay, az, gx, gy, gz]
                             if not args.no_unit_convert:

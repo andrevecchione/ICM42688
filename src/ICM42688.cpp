@@ -281,6 +281,21 @@ int ICM42688::disableDataReadyInterrupt() {
 	return 1;
 }
 
+int ICM42688::setFsyncConfig(uint8_t cfg) {
+	_useSPIHS = false;
+	if (setBank(0) < 0) return -1;
+	if (writeRegister(UB0_REG_FSYNC_CONFIG, cfg) < 0) return -2;
+	return 1;
+}
+
+int ICM42688::getFsyncTimestamp(uint16_t& ts) {
+	_useSPIHS = true;
+	if (setBank(0) < 0) return -1;
+	if (readRegisters(UB0_REG_TMST_FSYNCH, 2, _buffer) < 0) return -2;
+	ts = ((uint16_t)_buffer[0] << 8) | (uint16_t)_buffer[1];
+	return 1;
+}
+
 /* reads the most current data from ICM42688 and stores in buffer */
 int ICM42688::getAGT() {  // modified to use getRawAGT()
 	if (getRawAGT() < 0) {

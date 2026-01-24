@@ -174,6 +174,22 @@ class ICM42688 {
 	int disableDataReadyInterrupt();
 
 	/**
+	* @brief Configure FSYNC behavior (write raw UB0_REG_FSYNC_CONFIG)
+	*
+	* @param[in] cfg 8-bit value written to UB0_REG_FSYNC_CONFIG
+	* @return ret < 0 if error
+	*/
+	int setFsyncConfig(uint8_t cfg);
+
+	/**
+	* @brief Read last FSYNC timestamp (TMST_FSYNCH/TL)
+	*
+	* @param[out] ts 16-bit timestamp value read from sensor
+	* @return ret < 0 if error
+	*/
+	int getFsyncTimestamp(uint16_t& ts);
+
+	/**
      * @brief      Transfers data from ICM 42688-p to mcu.
      *             Must be called to access new measurements.
      *
